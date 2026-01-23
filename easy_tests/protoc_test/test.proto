@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+option go_package = "./pb";//生成到当前目录，包名为pb
+
+message LoginRequest {
+    string username = 1;
+    int32 age = 2;
+}

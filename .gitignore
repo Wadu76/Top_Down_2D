@@ -1,0 +1,46 @@
+# Unity 相关 (自动递归匹配client目录下的内容)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+#去掉了最前面的斜杠，确保能匹配 client/Assets
+[Aa]ssets/AssetStoreTools*
+
+# Visual Studio / IDE cache
+.vs/
+.gradle/
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+
+# GoLang (服务端相关)
+*.exe
+*.test
+*.prof
+vendor/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Special (特殊指定)
+server/server_bin
