@@ -2,7 +2,10 @@ package main
 
 import (
 	"log"
+	"google.golang.org/protobuf/proto"
 
+
+	pb "top-down-2d/pkg/pb"
 	"github.com/xtaci/kcp-go/v5"
 )
 
@@ -60,8 +63,14 @@ func handleConnection(conn *kcp.UDPSession) {
     // 用于接收客户端发送的数据
 	buf := make([]byte, 4096)
 
+	//不想看红报错
+	//_ = proto.Marshal
+    //_ = &pb.PlayerInput{}
+
+
 	for {
 		// 读取数据
+		//n为读取到的字节数
 		n, err := conn.Read(buf)
 		if err != nil {
 			//服务器端打印日志，客户端看不到
@@ -72,8 +81,88 @@ func handleConnection(conn *kcp.UDPSession) {
 		msg := string(buf[:n])
 		log.Printf("received message: %s", msg)
 
+		//判断是否接收到数据,不能<0
+		if n < 1 {
+			log.Println("no data received")
+			continue
+		}else{
+			//解析数据
+			//数据是对应什么操作的
+			msgID := buf[0]
+			//对应操作的数据
+			//realData := buf[1:] 会读多余脏shuju
+			realData := buf[1:n]
+
+			switch msgID {
+			case 1 : //登录请求
+				//创建空的loginRequest
+				loginRequest := &pb.LoginRequest{}
+				if err := proto.Unmarshal(realData, loginRequest); err == nil {
+                log.Printf("收到登录请求: Name=%s", loginRequest.Name)
+				//验证通过发送reponse
+				loginResponse := &pb.LoginResponse{
+					//Id: int32(loginRequest.ProtoReflect().ProtoMethods().Flags),
+					Success: true,
+				}
+				
+				response, err := proto.Marshal(loginResponse)
+				if err != nil {
+					conn.Write([]byte("登录失败"))
+					continue
+				}else{
+					//发送登录响应
+					conn.Write(response)
+				}
+				
+			}
+				//二进制数据解码入loginRequest里
+				proto.Unmarshal(realData, loginRequest)
+
+				//输出loginRequest
+				log.Println(loginRequest)
+
+			case 2 : //登录响应
+				//创建空的loginResponse
+				loginResponse := &pb.LoginResponse{}
+				//二进制数据解码入loginResponse里
+				proto.Unmarshal(realData, loginResponse)
+
+				//输出loginResponse
+				log.Println(loginResponse)
+			
+			case 3 : //玩家输入
+				//创建空的input
+				input := &pb.PlayerInput{}
+				//二进制数据解码入input里
+				proto.Unmarshal(realData, input)
+
+				//输出input
+				log.Println(input)
+
+			case 4 : //玩家状态
+				//创建空的playerState
+				playerState := &pb.PlayerState{}
+				//二进制数据解码入playerState里
+				proto.Unmarshal(realData, playerState)
+
+				//输出playerState
+				log.Println(playerState)
+
+			case 5 : //玩家列表
+				//创建空的worldstate
+				worldState := &pb.WorldState{}
+				//二进制数据解码入worldState里
+				proto.Unmarshal(realData, worldState)
+
+				//不需要输出吧
+			}
+		}
+		
+
 		// 回显数据
 		// 向客户端发送消息 服务器端->客户端
 		conn.Write([]byte("server received: " + msg))
 	}
+
+
 }

@@ -2,7 +2,10 @@ module top-down-2d
 
 go 1.25.1
 
-require github.com/xtaci/kcp-go/v5 v5.6.61
+require (
+	github.com/xtaci/kcp-go/v5 v5.6.61
+	google.golang.org/protobuf v1.36.11
+)
 
 require (
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
