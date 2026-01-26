@@ -143,4 +143,12 @@ public class SimpleNetworkManager : MonoBehaviour
         //关闭UDP客户端，释放网络资源（端口、缓冲区等）
         if (udpClient != null) udpClient.Close();
     }
+
+    void SendBytes(byte[] data)
+    {
+        if(kcp != null)
+        {
+            kcp.Send(data, 0, data.Length);
+        }
+    }
 }

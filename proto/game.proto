@@ -1,0 +1,85 @@
+//指定proto3版本
+syntax = "proto3";
+
+package pb;
+
+
+//GO配置
+//存放到当前目录，包名pb
+//分号前是生成路径，分号后是包名
+option go_package = "./;pb";
+
+//C#（Unity）配置
+//生成的C#代码会属于这个命名空间，Unity 里用的时候要 "using Game.Protocol;"
+option csharp_namespace = "Game.Protocol";
+
+//开始定义消息
+
+//玩家的输入操作 (客户端 -> 服务端)
+//每帧发送 因为按的频率很高
+message PlayerInput {
+
+    //左右移动输入(-1.0 到 1.0,Unity中的定义，-1为最左，1为最右), 对应Unity的Input.GetAxis("Horizontal")
+    float move_x = 1;
+
+    //同上，表上下移动(-1.0 到 1.0), 对应Unity的Input.GetAxis("Vertical")
+    float move_y = 2;
+
+    //玩家鼠标朝向的角度(0 - 360度)，用于让角色面朝鼠标
+    float view_angle = 3;
+
+    //是否按下了开火键(true/false)
+    bool fire = 4;
+
+    //客户端发送时的毫秒时间戳 (用于计算延迟 Ping 值)
+    int64 time = 5;
+
+    //每次写完就往后加数字，不要覆盖前面的
+    //更新完重新生成 push，其他人pull就可以用那个属性了
+}
+
+
+//单个玩家数据
+message PlayerState {
+    //玩家ID 唯一
+    int32 id = 1;
+
+    //当前位置 x
+    float pos_x = 2;
+
+    //当前位置 y
+    float pos_y = 3;
+
+    //当前朝向角度
+    float rotation = 4;
+
+    //当前生命值
+    int32 hp = 5;
+}
+
+
+//世界状态 (服务端 -> 客户端)
+message WorldState {
+    //"repeated"关键字表示这是一个列表(List/Array)
+    //当局所有玩家状态（嵌套）
+    repeated PlayerState players = 1;
+
+    //服务端当前的逻辑帧时间 (用于客户端做插值同步)
+    int64 server_time = 2;
+
+}
+
+//登录请求 (客户端 -> 服务端)
+message LoginRequest {
+    //玩家名字
+    string name = 1;
+}
+
+//登录响应 (服务端 -> 客户端)
+message LoginResponse {
+    //玩家ID
+    int32 id = 1;
+
+    //是否让进（密码/网络）
+    bool success = 2;
+}
