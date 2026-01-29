@@ -67,6 +67,7 @@ func handleConnection(conn *kcp.UDPSession) {
 	//不想看红报错
 	//_ = proto.Marshal
 	//_ = &pb.PlayerInput{}
+	count := 0
 
 	for {
 		// 读取数据
@@ -78,8 +79,9 @@ func handleConnection(conn *kcp.UDPSession) {
 			return
 		}
 		// 收到的
-		msg := string(buf[:n])
-		log.Printf("received message: %s", msg)
+		//msg := string(buf[:n])
+		//拖死服务器 发的的是二进制Protobuf，强行转string打印出来的也是乱码，不仅没用，还会导致服务器卡死。
+		//log.Printf("received message: %s", msg)
 
 		//判断是否接收到数据,不能<0
 		if n < 1 {
@@ -151,9 +153,10 @@ func handleConnection(conn *kcp.UDPSession) {
 				//创建空的input
 				input := &pb.PlayerInput{}
 				if err := proto.Unmarshal(realData, input); err == nil {
-					log.Printf("收到玩家输入: X=%.2f, Y=%.2f, Fire=%v", input.MoveX, input.MoveY, input.Fire)
+					//log.Printf("收到玩家输入: X=%.2f, Y=%.2f, Fire=%v", input.MoveX, input.MoveY, input.Fire)
 					//更新玩家坐标
 					playerstate := &pb.PlayerState{
+						Id:   1001, //一开始没位移的罪魁祸首
 						PosX: input.MoveX,
 						PosY: input.MoveY,
 					}
@@ -177,6 +180,10 @@ func handleConnection(conn *kcp.UDPSession) {
 						continue
 					}
 
+				}
+				count++
+				if count%100 == 0 {
+					log.Println("服务端正在健康运行，已处理 100 个移动包...")
 				}
 
 				/*

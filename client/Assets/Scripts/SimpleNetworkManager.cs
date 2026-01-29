@@ -25,7 +25,7 @@ public class SimpleNetworkManager : MonoBehaviour
     //标记是否已建立连接（逻辑层面，非TCP的“连接”，UDP无连接）
     bool isConnected = false;
 
-    void Start()
+    void Awake()
     {
         //准备 UDP
         //解析IP字符串为IPAddress对象，封装成服务器端点
@@ -57,7 +57,7 @@ public class SimpleNetworkManager : MonoBehaviour
         Debug.Log($"<color=green>UDP Socket 已就绪，连接目标 {address}:{port}</color>");
 
         //发送第一条打招呼消息
-        Send("Hello KCP, I am Raw Client!");
+        //Send("Hello KCP, I am Raw Client!");
     }
 
     void Update()
@@ -68,12 +68,20 @@ public class SimpleNetworkManager : MonoBehaviour
         //从UDP缓冲区捞数据，喂给KCP，缓冲池有数据就开始
         while (udpClient.Available > 0)
         {
-            IPEndPoint remote = null;
-            byte[] udpData = udpClient.Receive(ref remote);
+            try
+            {
+                IPEndPoint remote = null;
+                byte[] udpData = udpClient.Receive(ref remote);
 
-            //把UDP收到的原始字节数据喂给KCP
-            //Input现在需要传 3 个参数：数组，偏移量，长度
-            kcp.Input(udpData, 0, udpData.Length);
+                //把UDP收到的原始字节数据喂给KCP
+                //Input现在需要传 3 个参数：数组，偏移量，长度
+                kcp.Input(udpData, 0, udpData.Length);
+            }
+            catch (System.Exception e)
+            {
+                //return;
+                Debug.LogWarning($"[Net] 接收异常: {e.Message}");
+            }
         }
 
         //驱动 (Update)，Unity 启动后的秒数，*1000转成毫秒，强转成uint（kcp要求）
@@ -96,10 +104,10 @@ public class SimpleNetworkManager : MonoBehaviour
         }
 
         //测试输入
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            Send("Ping: " + Time.time);
-        }
+        //if (Input.GetKeyDown(KeyCode.Space))
+        //{
+        //    Send("Ping: " + Time.time);
+        //}
     }
 
     //回调与功能函数
@@ -110,11 +118,18 @@ public class SimpleNetworkManager : MonoBehaviour
     {
         if (udpClient != null)
         {
-            //直接把data发出去，length就是size
-            udpClient.Send(data, size);
+            try
+            {
+                udpClient.Send(data, size);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Net] 发送失败: {e.Message}");
+            }
         }
     }
 
+    //以后应该不用了，只用SendBytes
     public void Send(string content)
     {
         if (!isConnected) return;
@@ -132,8 +147,14 @@ public class SimpleNetworkManager : MonoBehaviour
     //处理收到的消息
     void OnMessageReceived(byte[] data)
     {
-        string msg = System.Text.Encoding.UTF8.GetString(data);
-        Debug.Log($"<color=cyan>[Server]: {msg}</color>");
+        //string msg = System.Text.Encoding.UTF8.GetString(data);
+        //Debug.Log($"<color=cyan>[Server]: {msg}</color>");
+        //把收到的原始数据，扔给GameClient去处理
+        Debug.Log($"[Net] 底层收到字节: {data.Length}");
+        if (GameClient.Instance != null)
+        {
+            GameClient.Instance.ProcessMessage(data);
+        }
     }
 
     //Unity退出时执行
@@ -144,7 +165,7 @@ public class SimpleNetworkManager : MonoBehaviour
         if (udpClient != null) udpClient.Close();
     }
 
-    void SendBytes(byte[] data)
+   public void SendBytes(byte[] data)
     {
         if(kcp != null)
         {
