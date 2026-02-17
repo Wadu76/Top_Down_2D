@@ -34,7 +34,7 @@ public class SimpleNetworkManager : MonoBehaviour
         udpClient = new UdpClient();
         //让UDP客户端“连接”到服务器端点，设置 UDP 客户端的默认发送目标
         //后续调用udpClient.Send()时，无需再指定目标地址，直接发向这个端点
-        udpClient.Connect(serverEndPoint);
+        //udpClient.Connect(serverEndPoint);
 
         //初始化 KCP
         //参数1: Conv ID。会话 ID，服务器必须识别这个 ID 才能处理数据
@@ -73,6 +73,7 @@ public class SimpleNetworkManager : MonoBehaviour
                 IPEndPoint remote = null;
                 byte[] udpData = udpClient.Receive(ref remote);
 
+                Debug.Log($"[Net] 底层收到 {udpData.Length} 字节 来自 {remote}");
                 //把UDP收到的原始字节数据喂给KCP
                 //Input现在需要传 3 个参数：数组，偏移量，长度
                 kcp.Input(udpData, 0, udpData.Length);
@@ -120,7 +121,8 @@ public class SimpleNetworkManager : MonoBehaviour
         {
             try
             {
-                udpClient.Send(data, size);
+                //udpClient.Send(data, size);
+                udpClient.Send(data, size, serverEndPoint);
             }
             catch (System.Exception e)
             {
@@ -130,7 +132,7 @@ public class SimpleNetworkManager : MonoBehaviour
     }
 
     //以后应该不用了，只用SendBytes
-    public void Send(string content)
+    /*public void Send(string content)
     {
         if (!isConnected) return;
 
@@ -142,7 +144,7 @@ public class SimpleNetworkManager : MonoBehaviour
         kcp.Send(data, 0, data.Length);
 
         Debug.Log($"[Client] 发送: {content}");
-    }
+    }*/
 
     //处理收到的消息
     void OnMessageReceived(byte[] data)

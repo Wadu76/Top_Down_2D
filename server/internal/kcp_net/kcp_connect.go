@@ -1,16 +1,17 @@
 package main
 
 import (
+
 	"log"
-
 	"google.golang.org/protobuf/proto"
-
-	pb "top-down-2d/pkg/pb"
-
+	"top-down-2d/pkg/pb"
+	
 	"github.com/xtaci/kcp-go/v5"
+
+	
 )
 
-func main() {
+func StartNetworkServer() {
 	//监听端口10000
 	//ListenWithOptions函数用于监听指定端口，
 	//创建带自定义选项的KCP监听器，最终返回 *kcp.Listener（KCP 监听器实例） 和error
@@ -41,11 +42,12 @@ func main() {
 
 		//为每个新连接启动一个goroutine处理连接，该循环为无限循环
 		// 并发服务器即如此实现
-		go handleConnection(conn)
+		go handleConnection(conn, eventChannel)
 	}
 }
 
-func handleConnection(conn *kcp.UDPSession) {
+
+func handleConnection(conn *kcp.UDPSession, eventChan chan<- Event) {
 	log.Println("new player connected:", conn.RemoteAddr())
 
 	// KCP的参数调整（需要快）
@@ -62,6 +64,8 @@ func handleConnection(conn *kcp.UDPSession) {
 	// 提高响应速度，带宽消耗多
 	conn.SetACKNoDelay(true)
 
+	defer conn.Close()
+
 	// 一个4kb大的缓冲区用于读数据并发送（echo）
 	// 用于接收客户端发送的数据
 	buf := make([]byte, 4096)
@@ -69,7 +73,7 @@ func handleConnection(conn *kcp.UDPSession) {
 	//不想看红报错
 	//_ = proto.Marshal
 	//_ = &pb.PlayerInput{}
-	count := 0
+	countID := 1
 
 	for {
 		// 读取数据
@@ -97,6 +101,11 @@ func handleConnection(conn *kcp.UDPSession) {
 			//realData := buf[1:] 会读多余脏shuju
 			realData := buf[1:n]
 
+			event := Event{
+				ConnId : countID,
+				MsgID:  msgID,
+				RawData:   realData,
+			}
 			/*
 				定义消息ID (口头协议)
 				在代码里写死常量
@@ -111,109 +120,30 @@ func handleConnection(conn *kcp.UDPSession) {
 
 				5 = WorldState		服务端 -> 客户端
 			*/
-			switch msgID {
-			case 1: //登录请求
-				//创建空的loginRequest
-				loginRequest := &pb.LoginRequest{}
-				if err := proto.Unmarshal(realData, loginRequest); err == nil {
-					log.Printf("收到登录请求: Name=%s", loginRequest.Name)
-					//验证通过发送reponse
-					loginResponse := &pb.LoginResponse{
-						//Id: int32(loginRequest.ProtoReflect().ProtoMethods().Flags),
-						Success: true,
-					}
-					//序列化
-					response, err := proto.Marshal(loginResponse)
-					if err != nil {
-						log.Println("marshal error:", err)
-					}
-					//封装数据 数据头为消息ID，后面为数据
-					ret_msg := make([]byte, 1+len(response))
-					//发送的是登录响应，消息ID为2，而不是1（登录请求）登录请求是客户端发给服务端的
-					ret_msg[0] = 2
-					copy(ret_msg[1:], response)
-					//发送
-					conn.Write(ret_msg)
+			
 
-				}
-				//二进制数据解码入loginRequest里
-				proto.Unmarshal(realData, loginRequest)
-
-				//输出loginRequest
-				log.Println(loginRequest)
-
-			/*case 2 : //登录响应
-			//创建空的loginResponse
-			loginResponse := &pb.LoginResponse{}
-			//二进制数据解码入loginResponse里
-			proto.Unmarshal(realData, loginResponse)
-
-			//输出loginResponse
-			log.Println(loginResponse)
-			*/
-			case 3: //玩家输入
-				//创建空的input
-				input := &pb.PlayerInput{}
-				if err := proto.Unmarshal(realData, input); err == nil {
-					//log.Printf("收到玩家输入: X=%.2f, Y=%.2f, Fire=%v", input.MoveX, input.MoveY, input.Fire)
-					//更新玩家坐标
-					playerstate := &pb.PlayerState{
-						Id:   1001, //一开始没位移的罪魁祸首
-						PosX: input.MoveX,
-						PosY: input.MoveY,
-					}
-					//发送更新后的玩家状态
-					//先序列化为二进制数据
-					stateData, err := proto.Marshal(playerstate)
-					if err != nil {
-						log.Println("序列化玩家状态失败", err)
-						continue
-					}
-					//构建信息 消息ID头+数据
-					ret_msg := make([]byte, 1+len(stateData))
-					//玩家状态对应的消息ID，3是客户端给服务器发的玩家输入的消息ID，4是服务器给客户端发的玩家状态的消息ID
-					ret_msg[0] = 4
-					copy(ret_msg[1:], stateData)
-
-					//发送二进制数据
-					_, err = conn.Write(ret_msg)
-					if err != nil {
-						log.Println("发送玩家状态失败", err)
-						continue
-					}
-
-				}
-				count++
-				if count%100 == 0 {
-					log.Println("服务端正在健康运行，已处理 100 个移动包...")
-				}
-
-				/*
-					case 4 : //玩家状态
-						//创建空的playerState
-						playerState := &pb.PlayerState{}
-						//二进制数据解码入playerState里
-						proto.Unmarshal(realData, playerState)
-
-						//输出playerState
-						log.Println(playerState)
-
-					case 5 : //玩家列表
-						//创建空的worldstate
-						worldState := &pb.WorldState{}
-						//二进制数据解码入worldState里
-						proto.Unmarshal(realData, worldState)
-
-						//不需要输出吧*/
-
-			default:
-				log.Println("未知消息ID", msgID)
-			}
 		}
+	}
+}
 
-		// 回显数据
-		// 向客户端发送消息 服务器端->客户端
-		//conn.Write([]byte("server received: " + msg)) 	这个不需要了，我们已经可以发送二进制序列了
+
+func SendMessagetoClient(conn *kcp.UDPSession, msgID byte, data proto.Message) {
+	//序列化
+	body, err := proto.Marshal(data)
+	if err != nil {
+		log.Println("marshal error:", err)
+		return
 	}
 
+	//封装
+	//ID+Body
+	packet := make([]byte, len(body)+1)
+	packet[0] = msgID
+	copy(packet[1:], body)
+
+	//发送
+	_, err = conn.Write(packet)
+	if err != nil {
+		log.Println("write error:", err)
+	}
 }
